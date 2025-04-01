@@ -193,10 +193,171 @@ GROUP BY c.codigo, v.partido;
 - `CONTAGEM`
 ```sql
 
+BEGIN
+    BEGIN EXECUTE IMMEDIATE 'DROP VIEW view_vencedores_freguesia'; EXCEPTION WHEN OTHERS THEN IF SQLCODE != -942 THEN RAISE; END IF; END;
+    BEGIN EXECUTE IMMEDIATE 'DROP VIEW view_vitorias_concelho'; EXCEPTION WHEN OTHERS THEN IF SQLCODE != -942 THEN RAISE; END IF; END;
+    BEGIN EXECUTE IMMEDIATE 'DROP VIEW view_num_freguesias_concelho'; EXCEPTION WHEN OTHERS THEN IF SQLCODE != -942 THEN RAISE; END IF; END;
+END;
+/
+
+CREATE VIEW view_vencedores_freguesia AS
+SELECT v1.partido, v1.freguesia, v1.votos
+FROM zvotacoes v1
+WHERE v1.votos = (SELECT MAX(votos) FROM zvotacoes WHERE freguesia = v1.freguesia);
+
+CREATE VIEW view_vitorias_concelho AS
+SELECT f.concelho, v.partido, COUNT(*) AS num_vitorias
+FROM zfreguesias f
+INNER JOIN view_vencedores_freguesia v
+ON f.codigo = v.freguesia
+GROUP BY f.concelho, v.partido;
+
+CREATE VIEW view_num_freguesias_concelho AS
+SELECT concelho, COUNT(*) AS num_freguesias
+FROM zfreguesias
+GROUP BY concelho;
+
+SELECT v1.concelho, v1.partido
+FROM zconcelhos c
+INNER JOIN zdistritos d ON c.distrito = d.codigo
+INNER JOIN view_vitorias_concelho v1 ON c.codigo = v1.concelho
+INNER JOIN view_num_freguesias_concelho v2 ON v1.concelho = v2.concelho
+WHERE v1.num_vitorias = v2.num_freguesias
+AND d.nome = 'Porto';
 
 
 ```
+
+- `DUPLA NEGAÇÃO`
+```sql
+
+BEGIN
+    BEGIN EXECUTE IMMEDIATE 'DROP VIEW neg_view_vencedores_freguesia'; EXCEPTION WHEN OTHERS THEN IF SQLCODE != -942 THEN RAISE; END IF;END;
+    BEGIN EXECUTE IMMEDIATE 'DROP VIEW neg_view_freguesias_com_vencedor'; EXCEPTION WHEN OTHERS THEN IF SQLCODE != -942 THEN RAISE; END IF; END;
+END;
+/
+
+CREATE VIEW neg_view_vencedores_freguesia AS
+SELECT v1.freguesia, v1.partido, v1.votos
+FROM zvotacoes v1
+WHERE v1.votos >= ALL (
+    SELECT v2.votos
+    FROM zvotacoes v2
+    WHERE v2.freguesia = v1.freguesia
+);
+
+CREATE VIEW neg_view_freguesias_com_vencedor AS
+SELECT f.codigo AS freguesia, f.concelho, v.partido
+FROM zfreguesias f
+INNER JOIN neg_view_vencedores_freguesia v
+ON f.codigo = v.freguesia;
+
+SELECT c.codigo, v.partido
+FROM zconcelhos c
+INNER JOIN zfreguesias f ON f.concelho = c.codigo
+INNER JOIN zdistritos d ON c.distrito = d.codigo
+INNER JOIN zvotacoes v ON v.freguesia = f.codigo
+WHERE d.nome = 'Porto'
+AND NOT EXISTS (
+    SELECT f2.concelho
+    FROM zfreguesias f2
+    WHERE f2.concelho = c.codigo
+    AND NOT EXISTS (
+        SELECT v2.freguesia
+        FROM neg_view_freguesias_com_vencedor v2
+        WHERE v2.freguesia = f2.codigo
+            AND v2.partido = v.partido
+    )
+)
+GROUP BY c.codigo, v.partido;
+
+```
+
 **c.** Com vista materializada (eventualmente com índices).
+
+- `CONTAGEM`
+```sql
+
+BEGIN
+    BEGIN EXECUTE IMMEDIATE 'DROP MATERIALIZED VIEW view_vencedores_freguesia'; EXCEPTION WHEN OTHERS THEN IF SQLCODE != -12003 THEN RAISE; END IF; END;
+    BEGIN EXECUTE IMMEDIATE 'DROP MATERIALIZED VIEW view_vitorias_concelho'; EXCEPTION WHEN OTHERS THEN IF SQLCODE != -12003 THEN RAISE; END IF; END;
+    BEGIN EXECUTE IMMEDIATE 'DROP MATERIALIZED VIEW view_num_freguesias_concelho'; EXCEPTION WHEN OTHERS THEN IF SQLCODE != -12003 THEN RAISE; END IF; END;
+END;
+/
+
+CREATE MATERIALIZED VIEW view_vencedores_freguesia AS
+SELECT v1.partido, v1.freguesia, v1.votos
+FROM zvotacoes v1
+WHERE v1.votos = (SELECT MAX(votos) FROM zvotacoes WHERE freguesia = v1.freguesia);
+
+CREATE MATERIALIZED VIEW view_vitorias_concelho AS
+SELECT f.concelho, v.partido, COUNT(*) AS num_vitorias
+FROM zfreguesias f
+INNER JOIN view_vencedores_freguesia v
+ON f.codigo = v.freguesia
+GROUP BY f.concelho, v.partido;
+
+CREATE MATERIALIZED VIEW view_num_freguesias_concelho AS
+SELECT concelho, COUNT(*) AS num_freguesias
+FROM zfreguesias
+GROUP BY concelho;
+
+SELECT v1.concelho, v1.partido
+FROM zconcelhos c
+INNER JOIN zdistritos d ON c.distrito = d.codigo
+INNER JOIN view_vitorias_concelho v1 ON c.codigo = v1.concelho
+INNER JOIN view_num_freguesias_concelho v2 ON v1.concelho = v2.concelho
+WHERE v1.num_vitorias = v2.num_freguesias
+AND d.nome = 'Porto';
+
+
+```
+
+- `DUPLA NEGAÇÃO`
+```sql
+
+BEGIN
+    BEGIN EXECUTE IMMEDIATE 'DROP MATERIALIZED VIEW neg_view_vencedores_freguesia'; EXCEPTION WHEN OTHERS THEN IF SQLCODE != -12003 THEN RAISE; END IF;END;
+    BEGIN EXECUTE IMMEDIATE 'DROP MATERIALIZED VIEW neg_view_freguesias_com_vencedor'; EXCEPTION WHEN OTHERS THEN IF SQLCODE != -12003 THEN RAISE; END IF; END;
+END;
+/
+
+CREATE MATERIALIZED VIEW neg_view_vencedores_freguesia AS
+SELECT v1.freguesia, v1.partido, v1.votos
+FROM zvotacoes v1
+WHERE v1.votos >= ALL (
+    SELECT v2.votos
+    FROM zvotacoes v2
+    WHERE v2.freguesia = v1.freguesia
+);
+
+CREATE MATERIALIZED VIEW neg_view_freguesias_com_vencedor AS
+SELECT f.codigo AS freguesia, f.concelho, v.partido
+FROM zfreguesias f
+INNER JOIN neg_view_vencedores_freguesia v
+ON f.codigo = v.freguesia;
+
+SELECT c.codigo, v.partido
+FROM zconcelhos c
+INNER JOIN zfreguesias f ON f.concelho = c.codigo
+INNER JOIN zdistritos d ON c.distrito = d.codigo
+INNER JOIN zvotacoes v ON v.freguesia = f.codigo
+WHERE d.nome = 'Porto'
+AND NOT EXISTS (
+    SELECT f2.concelho
+    FROM zfreguesias f2
+    WHERE f2.concelho = c.codigo
+    AND NOT EXISTS (
+        SELECT v2.freguesia
+        FROM neg_view_freguesias_com_vencedor v2
+        WHERE v2.freguesia = f2.codigo
+            AND v2.partido = v.partido
+    )
+)
+GROUP BY c.codigo, v.partido;
+
+```
+
 #### 5. Compare os planos de execução da pesquisa "Quantos votos tiveram o PS e o PSD nos distritos 11, 15 e 17", considerando no contexto Z
 
 ```sql
