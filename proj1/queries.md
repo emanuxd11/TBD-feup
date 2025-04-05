@@ -78,41 +78,48 @@ WHERE f.codigo=v.freguesia
 nele teve melhor votação.
 
 ```sql
+BEGIN
+    BEGIN EXECUTE IMMEDIATE 'DROP MATERIALIZED VIEW Sum_votos'; EXCEPTION WHEN OTHERS THEN IF SQLCODE != -12003 THEN RAISE; END IF; END;
+    BEGIN EXECUTE IMMEDIATE 'DROP MATERIALIZED VIEW Max_votos'; EXCEPTION WHEN OTHERS THEN IF SQLCODE != -12003 THEN RAISE; END IF; END;
+END;
+/
 
-WITH
-Sum_votos AS
-    (SELECT d.nome, v.partido, SUM(v.votos) AS total_votos
-    FROM xfreguesias f, xconcelhos c, xdistritos d, xvotacoes v
-    WHERE f.concelho=c.codigo AND c.distrito=d.codigo AND f.codigo=v.freguesia
-    GROUP BY d.nome, v.partido
-),
-Max_votos AS
-    (SELECT nome, MAX(total_votos) AS votos_max 
+CREATE MATERIALIZED VIEW Sum_votos AS
+    (SELECT c.distrito, v.partido, SUM(v.votos) AS total_votos
+    FROM xfreguesias f, xconcelhos c, xvotacoes v
+    WHERE f.concelho=c.codigo AND f.codigo=v.freguesia
+    GROUP BY c.distrito, v.partido
+    );
+CREATE MATERIALIZED VIEW Max_votos AS
+    (SELECT distrito, MAX(total_votos) AS votos_max 
     FROM Sum_votos
-    GROUP BY nome)
+    GROUP BY distrito
+    );
 
-SELECT m.nome, p.designacao, m.votos_max
-FROM Max_votos m, Sum_votos s, xpartidos p
-WHERE m.nome=s.nome AND m.votos_max=s.total_votos AND s.partido=p.sigla;  
+SELECT d.nome, p.designacao, m.votos_max
+FROM Max_votos m, Sum_votos s, xpartidos p, xdistritos d
+WHERE m.distrito=s.distrito AND m.votos_max=s.total_votos AND s.partido=p.sigla AND m.distrito=d.codigo;  
 
 ```
 `worst option (NO WITH)`
 ```sql
-SELECT m.nome, p.designacao, m.votos_max
-FROM 
-    (SELECT nome, MAX(total_votos) AS votos_max 
-    FROM 
-        (SELECT d.nome, v.partido, SUM(v.votos) AS total_votos
-        FROM xfreguesias f, xconcelhos c, xdistritos d, xvotacoes v
-        WHERE f.concelho=c.codigo AND c.distrito=d.codigo AND f.codigo=v.freguesia
-        GROUP BY d.nome, v.partido)
-    GROUP BY nome) m, 
-    (SELECT d.nome, v.partido, SUM(v.votos) AS total_votos
-    FROM xfreguesias f, xconcelhos c, xdistritos d, xvotacoes v
-    WHERE f.concelho=c.codigo AND c.distrito=d.codigo AND f.codigo=v.freguesia
-    GROUP BY d.nome, v.partido) s, 
-    xpartidos p
-WHERE m.nome=s.nome AND m.votos_max=s.total_votos AND s.partido=p.sigla;  
+SELECT d.nome, p.designacao, m.votos_max
+FROM xpartidos p
+    INNER JOIN 
+        (SELECT c.distrito, v.partido, SUM(v.votos) AS total_votos
+        FROM xfreguesias f, xconcelhos c, xvotacoes v
+        WHERE f.concelho=c.codigo AND f.codigo=v.freguesia
+        GROUP BY c.distrito, v.partido) s
+    ON s.partido=p.sigla
+    INNER JOIN
+        (SELECT distrito, MAX(total_votos) AS votos_max 
+        FROM (SELECT c.distrito, v.partido, SUM(v.votos) AS total_votos
+            FROM xfreguesias f, xconcelhos c, xvotacoes v
+            WHERE f.concelho=c.codigo AND f.codigo=v.freguesia
+            GROUP BY c.distrito, v.partido)
+        GROUP BY distrito) m
+    ON m.distrito=s.distrito AND m.votos_max=s.total_votos
+    INNER JOIN xdistritos d ON m.distrito=d.codigo;
 ```
 
 #### 3. Negação. 
@@ -137,26 +144,18 @@ WHERE sigla NOT IN (
 - `CONTAGEM`
 ```sql
 
-SELECT f1.concelho, f1.partido
+SELECT c.codigo, v.partido
 FROM zconcelhos c
-INNER JOIN zdistritos d 
-ON c.distrito=d.codigo
-INNER JOIN 
-    (SELECT f.concelho, v.partido, count(*) AS num_vitorias
-    FROM zfreguesias f
-    INNER JOIN
-        (SELECT v1.partido, v1.freguesia, v1.votos
-        FROM zvotacoes v1
-        WHERE v1.votos=(SELECT MAX(votos) FROM zvotacoes WHERE freguesia=v1.freguesia)) v
-    ON f.codigo=v.freguesia
-    GROUP BY f.concelho, v.partido) f1 
-ON c.codigo=f1.concelho
-INNER JOIN 
-    (SELECT concelho, count(*) AS num_freguesias
-    FROM zfreguesias
-    GROUP BY concelho) f2
-ON f1.concelho=f2.concelho
-WHERE f1.num_vitorias=f2.num_freguesias AND d.nome='Porto';
+INNER JOIN zdistritos d ON c.distrito=d.codigo
+INNER JOIN zfreguesias f ON c.codigo=f.concelho
+INNER JOIN zvotacoes v ON f.codigo=v.freguesia
+WHERE d.nome='Porto' AND v.votos=(SELECT MAX(votos) FROM zvotacoes WHERE freguesia=v.freguesia) 
+GROUP BY c.codigo, v.partido
+HAVING COUNT(*) = (
+    SELECT COUNT(*)
+    FROM zfreguesias f2
+    WHERE f2.concelho = c.codigo
+);
 
 ```
 
@@ -194,37 +193,30 @@ GROUP BY c.codigo, v.partido;
 ```sql
 
 BEGIN
-    BEGIN EXECUTE IMMEDIATE 'DROP VIEW view_vencedores_freguesia'; EXCEPTION WHEN OTHERS THEN IF SQLCODE != -942 THEN RAISE; END IF; END;
-    BEGIN EXECUTE IMMEDIATE 'DROP VIEW view_vitorias_concelho'; EXCEPTION WHEN OTHERS THEN IF SQLCODE != -942 THEN RAISE; END IF; END;
-    BEGIN EXECUTE IMMEDIATE 'DROP VIEW view_num_freguesias_concelho'; EXCEPTION WHEN OTHERS THEN IF SQLCODE != -942 THEN RAISE; END IF; END;
+    BEGIN EXECUTE IMMEDIATE 'DROP VIEW count_view_vencedores_freguesia'; EXCEPTION WHEN OTHERS THEN IF SQLCODE != -942 THEN RAISE; END IF; END;
 END;
 /
 
-CREATE VIEW view_vencedores_freguesia AS
-SELECT v1.partido, v1.freguesia, v1.votos
-FROM zvotacoes v1
-WHERE v1.votos = (SELECT MAX(votos) FROM zvotacoes WHERE freguesia = v1.freguesia);
-
-CREATE VIEW view_vitorias_concelho AS
-SELECT f.concelho, v.partido, COUNT(*) AS num_vitorias
+CREATE VIEW count_view_vencedores_freguesia AS
+SELECT f.concelho, v1.partido
 FROM zfreguesias f
-INNER JOIN view_vencedores_freguesia v
-ON f.codigo = v.freguesia
-GROUP BY f.concelho, v.partido;
+INNER JOIN
+    (SELECT v2.partido, v2.freguesia, v2.votos
+    FROM zvotacoes v2
+    WHERE v2.votos=(SELECT MAX(votos) FROM zvotacoes WHERE freguesia=v2.freguesia)) v1
+ON f.codigo=v1.freguesia;
 
-CREATE VIEW view_num_freguesias_concelho AS
-SELECT concelho, COUNT(*) AS num_freguesias
-FROM zfreguesias
-GROUP BY concelho;
-
-SELECT v1.concelho, v1.partido
+SELECT c.codigo, v.partido
 FROM zconcelhos c
-INNER JOIN zdistritos d ON c.distrito = d.codigo
-INNER JOIN view_vitorias_concelho v1 ON c.codigo = v1.concelho
-INNER JOIN view_num_freguesias_concelho v2 ON v1.concelho = v2.concelho
-WHERE v1.num_vitorias = v2.num_freguesias
-AND d.nome = 'Porto';
-
+INNER JOIN zdistritos d ON c.distrito=d.codigo
+INNER JOIN count_view_vencedores_freguesia v ON c.codigo=v.concelho
+WHERE d.nome='Porto'
+GROUP BY c.codigo, v.partido
+HAVING COUNT(*) = (
+    SELECT COUNT(*)
+    FROM zfreguesias f2
+    WHERE f2.concelho = c.codigo
+);
 
 ```
 
@@ -232,39 +224,34 @@ AND d.nome = 'Porto';
 ```sql
 
 BEGIN
-    BEGIN EXECUTE IMMEDIATE 'DROP VIEW neg_view_vencedores_freguesia'; EXCEPTION WHEN OTHERS THEN IF SQLCODE != -942 THEN RAISE; END IF;END;
-    BEGIN EXECUTE IMMEDIATE 'DROP VIEW neg_view_freguesias_com_vencedor'; EXCEPTION WHEN OTHERS THEN IF SQLCODE != -942 THEN RAISE; END IF; END;
+    BEGIN EXECUTE IMMEDIATE 'DROP VIEW neg_view_vencedores_freguesia'; EXCEPTION WHEN OTHERS THEN IF SQLCODE != -942 THEN RAISE; END IF; END;
 END;
 /
 
 CREATE VIEW neg_view_vencedores_freguesia AS
-SELECT v1.freguesia, v1.partido, v1.votos
-FROM zvotacoes v1
-WHERE v1.votos >= ALL (
-    SELECT v2.votos
-    FROM zvotacoes v2
-    WHERE v2.freguesia = v1.freguesia
-);
-
-CREATE VIEW neg_view_freguesias_com_vencedor AS
 SELECT f.codigo AS freguesia, f.concelho, v.partido
 FROM zfreguesias f
-INNER JOIN neg_view_vencedores_freguesia v
-ON f.codigo = v.freguesia;
+INNER JOIN zvotacoes v
+ON f.codigo = v.freguesia
+WHERE v.votos >= ALL (
+    SELECT v2.votos
+    FROM zvotacoes v2
+    WHERE v2.freguesia = v.freguesia
+);
 
 SELECT c.codigo, v.partido
 FROM zconcelhos c
-INNER JOIN zfreguesias f ON f.concelho = c.codigo
-INNER JOIN zdistritos d ON c.distrito = d.codigo
-INNER JOIN zvotacoes v ON v.freguesia = f.codigo
-WHERE d.nome = 'Porto'
+INNER JOIN zfreguesias f ON f.concelho=c.codigo
+INNER JOIN zdistritos d ON c.distrito=d.codigo
+INNER JOIN zvotacoes v ON v.freguesia=f.codigo
+WHERE d.nome='Porto'
 AND NOT EXISTS (
     SELECT f2.concelho
     FROM zfreguesias f2
     WHERE f2.concelho = c.codigo
     AND NOT EXISTS (
         SELECT v2.freguesia
-        FROM neg_view_freguesias_com_vencedor v2
+        FROM neg_view_vencedores_freguesia v2
         WHERE v2.freguesia = f2.codigo
             AND v2.partido = v.partido
     )
@@ -279,37 +266,30 @@ GROUP BY c.codigo, v.partido;
 ```sql
 
 BEGIN
-    BEGIN EXECUTE IMMEDIATE 'DROP MATERIALIZED VIEW view_vencedores_freguesia'; EXCEPTION WHEN OTHERS THEN IF SQLCODE != -12003 THEN RAISE; END IF; END;
-    BEGIN EXECUTE IMMEDIATE 'DROP MATERIALIZED VIEW view_vitorias_concelho'; EXCEPTION WHEN OTHERS THEN IF SQLCODE != -12003 THEN RAISE; END IF; END;
-    BEGIN EXECUTE IMMEDIATE 'DROP MATERIALIZED VIEW view_num_freguesias_concelho'; EXCEPTION WHEN OTHERS THEN IF SQLCODE != -12003 THEN RAISE; END IF; END;
+    BEGIN EXECUTE IMMEDIATE 'DROP MATERIALIZED VIEW mat_count_view_vencedores_freguesia'; EXCEPTION WHEN OTHERS THEN IF SQLCODE != -12003 THEN RAISE; END IF; END;
 END;
 /
 
-CREATE MATERIALIZED VIEW view_vencedores_freguesia AS
-SELECT v1.partido, v1.freguesia, v1.votos
-FROM zvotacoes v1
-WHERE v1.votos = (SELECT MAX(votos) FROM zvotacoes WHERE freguesia = v1.freguesia);
-
-CREATE MATERIALIZED VIEW view_vitorias_concelho AS
-SELECT f.concelho, v.partido, COUNT(*) AS num_vitorias
+CREATE MATERIALIZED VIEW mat_count_view_vencedores_freguesia AS
+SELECT f.concelho, v1.partido
 FROM zfreguesias f
-INNER JOIN view_vencedores_freguesia v
-ON f.codigo = v.freguesia
-GROUP BY f.concelho, v.partido;
+INNER JOIN
+    (SELECT v2.partido, v2.freguesia, v2.votos
+    FROM zvotacoes v2
+    WHERE v2.votos=(SELECT MAX(votos) FROM zvotacoes WHERE freguesia=v2.freguesia)) v1
+ON f.codigo=v1.freguesia;
 
-CREATE MATERIALIZED VIEW view_num_freguesias_concelho AS
-SELECT concelho, COUNT(*) AS num_freguesias
-FROM zfreguesias
-GROUP BY concelho;
-
-SELECT v1.concelho, v1.partido
+SELECT c.codigo, v.partido
 FROM zconcelhos c
-INNER JOIN zdistritos d ON c.distrito = d.codigo
-INNER JOIN view_vitorias_concelho v1 ON c.codigo = v1.concelho
-INNER JOIN view_num_freguesias_concelho v2 ON v1.concelho = v2.concelho
-WHERE v1.num_vitorias = v2.num_freguesias
-AND d.nome = 'Porto';
-
+INNER JOIN zdistritos d ON c.distrito=d.codigo
+INNER JOIN mat_count_view_vencedores_freguesia v ON c.codigo=v.concelho
+WHERE d.nome='Porto'
+GROUP BY c.codigo, v.partido
+HAVING COUNT(*) = (
+    SELECT COUNT(*)
+    FROM zfreguesias f2
+    WHERE f2.concelho = c.codigo
+);
 
 ```
 
@@ -317,39 +297,34 @@ AND d.nome = 'Porto';
 ```sql
 
 BEGIN
-    BEGIN EXECUTE IMMEDIATE 'DROP MATERIALIZED VIEW neg_view_vencedores_freguesia'; EXCEPTION WHEN OTHERS THEN IF SQLCODE != -12003 THEN RAISE; END IF;END;
-    BEGIN EXECUTE IMMEDIATE 'DROP MATERIALIZED VIEW neg_view_freguesias_com_vencedor'; EXCEPTION WHEN OTHERS THEN IF SQLCODE != -12003 THEN RAISE; END IF; END;
+    BEGIN EXECUTE IMMEDIATE 'DROP MATERIALIZED VIEW mat_neg_view_vencedores_freguesia'; EXCEPTION WHEN OTHERS THEN IF SQLCODE != -12003 THEN RAISE; END IF; END;
 END;
 /
 
-CREATE MATERIALIZED VIEW neg_view_vencedores_freguesia AS
-SELECT v1.freguesia, v1.partido, v1.votos
-FROM zvotacoes v1
-WHERE v1.votos >= ALL (
-    SELECT v2.votos
-    FROM zvotacoes v2
-    WHERE v2.freguesia = v1.freguesia
-);
-
-CREATE MATERIALIZED VIEW neg_view_freguesias_com_vencedor AS
+CREATE MATERIALIZED VIEW mat_neg_view_vencedores_freguesia AS
 SELECT f.codigo AS freguesia, f.concelho, v.partido
 FROM zfreguesias f
-INNER JOIN neg_view_vencedores_freguesia v
-ON f.codigo = v.freguesia;
+INNER JOIN zvotacoes v
+ON f.codigo = v.freguesia
+WHERE v.votos >= ALL (
+    SELECT v2.votos
+    FROM zvotacoes v2
+    WHERE v2.freguesia = v.freguesia
+);
 
 SELECT c.codigo, v.partido
 FROM zconcelhos c
-INNER JOIN zfreguesias f ON f.concelho = c.codigo
-INNER JOIN zdistritos d ON c.distrito = d.codigo
-INNER JOIN zvotacoes v ON v.freguesia = f.codigo
-WHERE d.nome = 'Porto'
+INNER JOIN zfreguesias f ON f.concelho=c.codigo
+INNER JOIN zdistritos d ON c.distrito=d.codigo
+INNER JOIN zvotacoes v ON v.freguesia=f.codigo
+WHERE d.nome='Porto'
 AND NOT EXISTS (
     SELECT f2.concelho
     FROM zfreguesias f2
     WHERE f2.concelho = c.codigo
     AND NOT EXISTS (
         SELECT v2.freguesia
-        FROM neg_view_freguesias_com_vencedor v2
+        FROM mat_neg_view_vencedores_freguesia v2
         WHERE v2.freguesia = f2.codigo
             AND v2.partido = v.partido
     )
@@ -372,13 +347,3 @@ GROUP BY d.nome, v.partido;
 
 **a.** Com índices árvore-B em zconcelhos.distrito e zvotacoes.partido.
 **b.** Com índices bitmap.
-
-SELECT d.nome, v.partido, SUM(v.votos) AS total_votos
-FROM xfreguesias f 
-INNER JOIN xconcelhos c on
-f.concelho=c.codigo
-INNER JOIN xdistritos d on
-c.distrito=d.codigo
-INNER JOIN xvotacoes v on
-f.codigo=v.freguesia
-GROUP BY d.nome, v.partido  
