@@ -56,17 +56,19 @@ INSERT INTO zparticipacoes SELECT * FROM GTD7.PARTICIPACOES;
 
 -- ADD INDEXES FOR PERFORMANCE
 
+CREATE INDEX idx_zvotacoes_votos ON zvotacoes(votos);
+
 -- INDEXES FOR FOREIGN KEYS (Faster joins)
-CREATE INDEX idx_zconcelhos_distrito ON zconcelhos(distrito);
+CREATE INDEX idx_zconcelhos_distrito ON zconcelhos(distrito); --NO BITMAP
 CREATE INDEX idx_zfreguesias_concelho ON zfreguesias(concelho);
-CREATE INDEX idx_zvotacoes_partido ON zvotacoes(partido);
+CREATE INDEX idx_zvotacoes_partido ON zvotacoes(partido); --NO BITMAP
 CREATE INDEX idx_zvotacoes_freguesia ON zvotacoes(freguesia);
 CREATE INDEX idx_zlistas_distrito ON zlistas(distrito);
 CREATE INDEX idx_zlistas_partido ON zlistas(partido);
 
 -- INDEXES FOR SEARCH OPERATIONS (e.g., "WHERE nome = 'Lisboa'")
-CREATE INDEX idx_zdistritos_nome ON zdistritos(nome);
+CREATE BITMAP INDEX idx_zdistritos_nome ON zdistritos(nome);
 CREATE INDEX idx_zconcelhos_nome ON zconcelhos(nome);
-CREATE INDEX idx_zfreguesias_nome ON zfreguesias(nome);
 
-CREATE INDEX idx_zvotacoes_freguesia_partido ON zvotacoes(freguesia, partido);
+-- COMPOSITE INDEXES
+CREATE INDEX idx_zvotacoes_freguesia_partido_votos ON zvotacoes(freguesia, partido, votos);

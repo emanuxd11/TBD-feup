@@ -128,7 +128,7 @@ Analise de igual forma a questão "Quais os partidos que não concorreram no dis
 ```sql
 
 SELECT sigla, designacao
-FROM partidos
+FROM xpartidos
 WHERE sigla NOT IN (
     SELECT l.partido
     FROM xlistas l, xdistritos d
@@ -311,6 +311,8 @@ WHERE v.votos >= ALL (
     FROM zvotacoes v2
     WHERE v2.freguesia = v.freguesia
 );
+
+CREATE INDEX idx_mat_neg_view_freguesia_partido ON mat_neg_view_vencedores_freguesia(freguesia, partido);
 
 SELECT c.codigo, v.partido
 FROM zconcelhos c
