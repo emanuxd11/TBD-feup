@@ -342,7 +342,7 @@ GROUP BY c.codigo, v.partido;
 SELECT d.nome, v.partido, SUM(v.votos) AS num_votos
 FROM zfreguesias f, zconcelhos c, zdistritos d, zvotacoes v
 WHERE f.concelho=c.codigo AND c.distrito=d.codigo AND f.codigo=v.freguesia
-    AND (v.partido='PS' OR v.partido='PPDPSD') AND (d.codigo=11 OR d.codigo=15 OR d.codigo=17)
+    AND (v.partido='PS' OR v.partido='PPDPSD') AND (c.distrito=11 OR c.distrito=15 OR c.distrito=17)
 GROUP BY d.nome, v.partido;
 
 ```
