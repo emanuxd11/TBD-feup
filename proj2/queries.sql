@@ -47,3 +47,5 @@ FROM municipalities m, headings h, periods p, leaderships l
 WHERE l.municipality = REF(m)
     AND h.decription = 'Salaries'
 GROUP BY l.party, p.year;
+
+-- f) Add a query that illustrates the use of OR extensions
