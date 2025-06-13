@@ -1,160 +1,160 @@
 -- Insertions for municipalities table using municipalities_t sub-types constructors
 -- GeoLevel 1: Country
 INSERT INTO municipalities
-    VALUES (country_t(1, 'Portugal', 'PT', 92212, 10352042));
+    VALUES (country_t(1, 'Portugal', 'PT', 91829.5, 10638898, NULL));
 
 -- GeoLevel 2: NUT I
 INSERT INTO municipalities
-    SELECT nut_i_t(2, 'Continente', 'PT1', 89078, 9854236, TREAT(REF(m) AS REF country_t))
+    SELECT nut_i_t(2, 'Continente', 'PT1', 88746.5, 10141251, TREAT(REF(m) AS REF country_t))
     FROM municipalities m
     WHERE m.code = 1;
 
 INSERT INTO municipalities
-    SELECT nut_i_t(3, 'Açores', 'PT2', 2333, 246746, TREAT(REF(m) AS REF country_t))
+    SELECT nut_i_t(3, 'Açores', 'PT2', 2287, 241025, TREAT(REF(m) AS REF country_t))
     FROM municipalities m
     WHERE m.code = 1;
 
 INSERT INTO municipalities
-    SELECT nut_i_t(4, 'Madeira', 'PT3', 801, 251060, TREAT(REF(m) AS REF country_t))
+    SELECT nut_i_t(4, 'Madeira', 'PT3', 796, 256622, TREAT(REF(m) AS REF country_t))
     FROM municipalities m
     WHERE m.code = 1;
 
 -- GeoLevel 3: NUT II
 INSERT INTO municipalities
-    SELECT nut_ii_t(5, 'Norte', 'PT11', 21286, 3572954, TREAT(REF(m) AS REF nut_i_t))
+    SELECT nut_ii_t(5, 'Norte', 'PT11', 20358.5, 3368453, TREAT(REF(m) AS REF nut_i_t))
     FROM municipalities m
     WHERE m.code = 2;
 
 INSERT INTO municipalities
-    SELECT nut_ii_t(6, 'Centro', 'PT12', 28199, 2238765, TREAT(REF(m) AS REF nut_i_t))
+    SELECT nut_ii_t(6, 'Centro', 'PT12', 26087, 2375133, TREAT(REF(m) AS REF nut_i_t))
     FROM municipalities m
     WHERE m.code = 2;
 
 INSERT INTO municipalities
-    SELECT nut_ii_t(7, 'Lisboa', 'PT13', 3001, 2238765, TREAT(REF(m) AS REF nut_i_t))
+    SELECT nut_ii_t(7, 'Lisboa', 'PT13', 13707.2, 3506968, TREAT(REF(m) AS REF nut_i_t))
     FROM municipalities m
     WHERE m.code = 2;
 
 INSERT INTO municipalities
-    SELECT nut_ii_t(8, 'Alentejo', 'PT15', 31605, 704707, TREAT(REF(m) AS REF nut_i_t))
+    SELECT nut_ii_t(8, 'Alentejo', 'PT15', 23601.8, 406575, TREAT(REF(m) AS REF nut_i_t))
     FROM municipalities m
     WHERE m.code = 2;
 
 INSERT INTO municipalities
-    SELECT nut_ii_t(9, 'Algarve', 'PT16', 4997, 451006, TREAT(REF(m) AS REF nut_i_t))
+    SELECT nut_ii_t(9, 'Algarve', 'PT16', 4992, 484122, TREAT(REF(m) AS REF nut_i_t))
     FROM municipalities m
     WHERE m.code = 2;
 
 INSERT INTO municipalities
-    SELECT nut_ii_t(10, 'Açores', 'PT21', 2333, 246746, TREAT(REF(m) AS REF nut_i_t))
+    SELECT nut_ii_t(10, 'Açores', 'PT21', 2287, 241025, TREAT(REF(m) AS REF nut_i_t))
     FROM municipalities m
     WHERE m.code = 3;
 
 INSERT INTO municipalities
-    SELECT nut_ii_t(11, 'Madeira', 'PT31', 801, 251060, TREAT(REF(m) AS REF nut_i_t))
+    SELECT nut_ii_t(11, 'Madeira', 'PT31', 796, 256622, TREAT(REF(m) AS REF nut_i_t))
     FROM municipalities m
     WHERE m.code = 4;
 
 -- GeoLevel 4: NUT III
 INSERT INTO municipalities
-SELECT nut_iii_t(12, 'Aveiro', 'AV', 2808, 725461, TREAT(REF(m) AS REF nut_ii_t))
-FROM municipalities m
-WHERE m.code = 6; -- Centro
+    SELECT nut_iii_t(12, 'Aveiro', 'AV', 2569, 690226, TREAT(REF(m) AS REF nut_ii_t))
+    FROM municipalities m
+    WHERE m.code = 6; -- Centro
 
 INSERT INTO municipalities
-SELECT nut_iii_t(13, 'Beja', 'BE', 10263, 148881, TREAT(REF(m) AS REF nut_ii_t))
-FROM municipalities m
-WHERE m.code = 8; -- Alentejo
+    SELECT nut_iii_t(13, 'Beja', 'BE', 10135, 148881, TREAT(REF(m) AS REF nut_ii_t))
+    FROM municipalities m
+    WHERE m.code = 8; -- Alentejo
 
 INSERT INTO municipalities
-SELECT nut_iii_t(14, 'Braga', 'BR', 2673, 863547, TREAT(REF(m) AS REF nut_ii_t))
-FROM municipalities m
-WHERE m.code = 5; -- Norte
+    SELECT nut_iii_t(14, 'Braga', 'BR', 2688, 852297, TREAT(REF(m) AS REF nut_ii_t))
+    FROM municipalities m
+    WHERE m.code = 5; -- Norte
 
 INSERT INTO municipalities
-SELECT nut_iii_t(15, 'Bragança', 'BG', 6608, 122739, TREAT(REF(m) AS REF nut_ii_t))
-FROM municipalities m
-WHERE m.code = 5; -- Norte
+    SELECT nut_iii_t(15, 'Bragança', 'BG', 5539.6, 107451, TREAT(REF(m) AS REF nut_ii_t))
+    FROM municipalities m
+    WHERE m.code = 5; -- Norte
 
 INSERT INTO municipalities
-SELECT nut_iii_t(16, 'Castelo Branco', 'CB', 6675, 179608, TREAT(REF(m) AS REF nut_ii_t))
-FROM municipalities m
-WHERE m.code = 6; -- Centro
+    SELECT nut_iii_t(16, 'Castelo Branco', 'CB', 5250, 100036, TREAT(REF(m) AS REF nut_ii_t))
+    FROM municipalities m
+    WHERE m.code = 6; -- Centro
 
 INSERT INTO municipalities
-SELECT nut_iii_t(17, 'Coimbra', 'C', 3947, 418136, TREAT(REF(m) AS REF nut_ii_t))
-FROM municipalities m
-WHERE m.code = 6; -- Centro
+    SELECT nut_iii_t(17, 'Coimbra', 'C', 4329, 446982, TREAT(REF(m) AS REF nut_ii_t))
+    FROM municipalities m
+    WHERE m.code = 6; -- Centro
 
 INSERT INTO municipalities
-SELECT nut_iii_t(18, 'Évora', 'E', 7393, 153475, TREAT(REF(m) AS REF nut_ii_t))
-FROM municipalities m
-WHERE m.code = 8; -- Alentejo
+    SELECT nut_iii_t(18, 'Évora', 'E', 7388.8, 153613, TREAT(REF(m) AS REF nut_ii_t))
+    FROM municipalities m
+    WHERE m.code = 8; -- Alentejo
 
 INSERT INTO municipalities
-SELECT nut_iii_t(19, 'Faro', 'FA', 4960, 484122, TREAT(REF(m) AS REF nut_ii_t))
-FROM municipalities m
-WHERE m.code = 9; -- Algarve
+    SELECT nut_iii_t(19, 'Faro', 'FA', 4992, 484122, TREAT(REF(m) AS REF nut_ii_t))
+    FROM municipalities m
+    WHERE m.code = 9; -- Algarve
 
 INSERT INTO municipalities
-SELECT nut_iii_t(20, 'Guarda', 'GD', 5518, 141995, TREAT(REF(m) AS REF nut_ii_t))
-FROM municipalities m
-WHERE m.code = 6; -- Centro
+    SELECT nut_iii_t(20, 'Guarda', 'GD', 6217, 209896, TREAT(REF(m) AS REF nut_ii_t))
+    FROM municipalities m
+    WHERE m.code = 6; -- Centro
 
 INSERT INTO municipalities
-SELECT nut_iii_t(21, 'Leiria', 'LE', 3515, 479261, TREAT(REF(m) AS REF nut_ii_t))
-FROM municipalities m
-WHERE m.code = 6; -- Centro
+    SELECT nut_iii_t(21, 'Leiria', 'LE', 4490, 671183, TREAT(REF(m) AS REF nut_ii_t))
+    FROM municipalities m
+    WHERE m.code = 6; -- Centro
 
 INSERT INTO municipalities
-SELECT nut_iii_t(22, 'Lisboa', 'L', 2761, 2355867, TREAT(REF(m) AS REF nut_ii_t))
-FROM municipalities m
-WHERE m.code = 7; -- Lisboa (NUT II)
+    SELECT nut_iii_t(22, 'Lisboa', 'L', 1563.9, 2139960, TREAT(REF(m) AS REF nut_ii_t))
+    FROM municipalities m
+    WHERE m.code = 7; -- Lisboa (NUT II)
 
 INSERT INTO municipalities
-SELECT nut_iii_t(23, 'Portalegre', 'PR', 6065, 104081, TREAT(REF(m) AS REF nut_ii_t))
-FROM municipalities m
-WHERE m.code = 8; -- Alentejo
+    SELECT nut_iii_t(23, 'Portalegre', 'PR', 6078, 104081, TREAT(REF(m) AS REF nut_ii_t))
+    FROM municipalities m
+    WHERE m.code = 8; -- Alentejo
 
 INSERT INTO municipalities
-SELECT nut_iii_t(24, 'Porto', 'P', 2395, 1846178, TREAT(REF(m) AS REF nut_ii_t))
-FROM municipalities m
-WHERE m.code = 5; -- Norte
+    SELECT nut_iii_t(24, 'Porto', 'P', 2971, 1906475, TREAT(REF(m) AS REF nut_ii_t))
+    FROM municipalities m
+    WHERE m.code = 5; -- Norte
 
 INSERT INTO municipalities
-SELECT nut_iii_t(25, 'Santarém', 'SA', 6747, 441255, TREAT(REF(m) AS REF nut_ii_t))
-FROM municipalities m
-WHERE m.code = 7; -- Lisboa (NUT II)
+    SELECT nut_iii_t(25, 'Santarém', 'SA', 6958.3, 464145, TREAT(REF(m) AS REF nut_ii_t))
+    FROM municipalities m
+    WHERE m.code = 7; -- Lisboa (NUT II)
 
 INSERT INTO municipalities
-SELECT nut_iii_t(26, 'Setúbal', 'SE', 5064, 902863, TREAT(REF(m) AS REF nut_ii_t))
-FROM municipalities m
-WHERE m.code = 7; -- Lisboa (NUT II)
+    SELECT nut_iii_t(26, 'Setúbal', 'SE', 5185, 902863, TREAT(REF(m) AS REF nut_ii_t))
+    FROM municipalities m
+    WHERE m.code = 7; -- Lisboa (NUT II)
 
 INSERT INTO municipalities
-SELECT nut_iii_t(27, 'Viana do Castelo', 'VC', 2255, 234215, TREAT(REF(m) AS REF nut_ii_t))
-FROM municipalities m
-WHERE m.code = 5; -- Norte
+    SELECT nut_iii_t(27, 'Viana do Castelo', 'VC', 2216, 234215, TREAT(REF(m) AS REF nut_ii_t))
+    FROM municipalities m
+    WHERE m.code = 5; -- Norte
 
 INSERT INTO municipalities
-SELECT nut_iii_t(28, 'Vila Real', 'VR', 4328, 185086, TREAT(REF(m) AS REF nut_ii_t))
-FROM municipalities m
-WHERE m.code = 5; -- Norte
+    SELECT nut_iii_t(28, 'Vila Real', 'VR', 6943.9, 268015, TREAT(REF(m) AS REF nut_ii_t))
+    FROM municipalities m
+    WHERE m.code = 5; -- Norte
 
 INSERT INTO municipalities
-SELECT nut_iii_t(29, 'Viseu', 'VI', 5007, 355309, TREAT(REF(m) AS REF nut_ii_t))
-FROM municipalities m
-WHERE m.code = 6; -- Centro
+    SELECT nut_iii_t(29, 'Viseu', 'VI', 3232, 256810, TREAT(REF(m) AS REF nut_ii_t))
+    FROM municipalities m
+    WHERE m.code = 6; -- Centro
 
 INSERT INTO municipalities
-SELECT nut_iii_t(30, 'Açores', 'A', 2333, 241025, TREAT(REF(m) AS REF nut_ii_t))
-FROM municipalities m
-WHERE m.code = 10; -- Açores (NUT II)
+    SELECT nut_iii_t(30, 'Açores', 'A', 2287, 241025, TREAT(REF(m) AS REF nut_ii_t))
+    FROM municipalities m
+    WHERE m.code = 10; -- Açores (NUT II)
 
 INSERT INTO municipalities
-SELECT nut_iii_t(31, 'Madeira', 'M', 801, 256622, TREAT(REF(m) AS REF nut_ii_t))
-FROM municipalities m
-WHERE m.code = 11; -- Madeira (NUT II)
+    SELECT nut_iii_t(31, 'Madeira', 'M', 796, 256622, TREAT(REF(m) AS REF nut_ii_t))
+    FROM municipalities m
+    WHERE m.code = 11; -- Madeira (NUT II)
 
 -- GeoLevel 5: Municipality
 INSERT INTO municipalities
@@ -1671,4 +1671,29 @@ INSERT INTO municipalities
 SELECT municipality_t(334, 'Corvo', 'CORV', 17, 435, TREAT(REF(m) AS REF nut_iii_t))
 FROM municipalities m
 WHERE m.code = 30; -- Açores
+
+INSERT INTO municipalities
+    SELECT municipality_t(335, 'Cadaval', 'CDV', 174.9, 13382, TREAT(REF(m) AS REF nut_iii_t))
+    FROM municipalities m
+    WHERE m.code = 22; -- Lisboa
+
+INSERT INTO municipalities
+    SELECT municipality_t(336, 'Estremoz', 'ETZ', 513.8, 12688, TREAT(REF(m) AS REF nut_iii_t))
+    FROM municipalities m
+    WHERE m.code = 18; -- Évora
+
+INSERT INTO municipalities
+    SELECT municipality_t(337, 'Golegã', 'GLG', 76.3, 5400, TREAT(REF(m) AS REF nut_iii_t))
+    FROM municipalities m
+    WHERE m.code = 25; -- Santarém
+
+INSERT INTO municipalities
+    SELECT municipality_t(338, 'Peso da Régua', 'PRG', 94.9, 14553, TREAT(REF(m) AS REF nut_iii_t))
+    FROM municipalities m
+    WHERE m.code = 28; -- Vila Real
+
+INSERT INTO municipalities
+    SELECT municipality_t(339, 'Vimioso', 'VMS', 481.6, 4154, TREAT(REF(m) AS REF nut_iii_t))
+    FROM municipalities m
+    WHERE m.code = 15; -- Bragança
 
