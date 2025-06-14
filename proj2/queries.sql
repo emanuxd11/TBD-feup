@@ -1,9 +1,4 @@
 -- a) Calculate the expenses by period and heading of each region's municipalities. Order municipalities by decreasing population.
-/* SELECT m.designation, p.year, h.description, m.get_total_expenses(VALUE(h), VALUE(p)) AS total_expenses
-FROM municipalities m, periods p, headings h
--- WHERE VALUE(m) IS OF (municipality_t)
-ORDER BY m.population DESC; */
-
 SELECT x.municipality.designation, DEREF(x.heading).description, DEREF(x.period).year, x.total_expenses
 FROM (
     SELECT e.municipality.get_nut_iii() AS municipality, e.heading, e.period, SUM(e.amount) AS total_expenses
@@ -11,6 +6,7 @@ FROM (
     GROUP BY e.municipality.get_nut_iii(), e.heading, e.period
 ) x
 ORDER BY x.municipality.population DESC;
+
 
 -- b) Check whether the values of the higher-level headings are consistent with the corresponding lower values.
 SELECT DEREF(x1.heading).description, x1.soma AS lower_level_sum, x2.soma AS higher_level_value
@@ -35,13 +31,8 @@ FROM
     WHERE DEREF(e.heading).hlevel = 1
     GROUP BY e.heading) x2 ON x1.heading = x2.heading;
 
--- c) What is the average expense by a thousand inhabitants on each heading for each party?
-/* SELECT DEREF(l.party).partyName, AVG((m.get_total_expenses_by_heading(VALUE(h)) / m.population) * 1000) AS avg_expense_per_thousand
-FROM municipalities m, headings h, leaderships l
-WHERE l.municipality = REF(m)
-    AND TREAT(VALUE(m) AS municipality_t) IS NOT NULL
-GROUP BY DEREF(l.party).partyName; */
 
+-- c) What is the average expense by a thousand inhabitants on each heading for each party?
 SELECT x.party.acronym, x.heading.description, x.avg_expense_per_thousand
 FROM (
     SELECT l.party, e.heading, AVG((e.amount / l.municipality.population) * 1000) AS avg_expense_per_thousand
@@ -58,13 +49,8 @@ FROM (
     GROUP BY l.party.partyName, e.heading
 ) x;
 
--- d) Which party has more investment per square km each year?
-/* SELECT DEREF(l.party).partyName, p.year, SUM(m.get_total_expenses(VALUE(h), VALUE(p)) / m.area)
-FROM municipalities m, headings h, periods p, leaderships l
-WHERE l.municipality = REF(m)
-    AND h.description = 'Capital Investments'
-GROUP BY DEREF(l.party).partyName, p.year; */
 
+-- d) Which party has more investment per square km each year?
 SELECT x.party.acronym AS party, x.period.year AS year, x.investment_per_km2
 FROM (
     SELECT l.party, e.period, SUM(e.amount/e.municipality.area) AS investment_per_km2
@@ -101,13 +87,8 @@ FROM (
 ) x
 ORDER BY x.period.year ASC;
 
--- e) Which party has more salaries per thousand inhabitants each year?
-/* SELECT DEREF(l.party).partyName, p.year, SUM((m.get_total_expenses(VALUE(h), VALUE(p)) / m.population) * 1000)
-FROM municipalities m, headings h, periods p, leaderships l
-WHERE l.municipality = REF(m)
-    AND h.description = 'Salaries'
-GROUP BY DEREF(l.party).partyName, p.year; */
 
+-- e) Which party has more salaries per thousand inhabitants each year?
 SELECT x.party.acronym AS party, x.period.year AS year, x.salaries_per_thousand
 FROM (
     SELECT l.party, e.period, SUM((e.amount/e.municipality.population) * 1000) AS salaries_per_thousand
@@ -145,5 +126,80 @@ FROM (
 ORDER BY x.period.year ASC;
 
 
-
 -- f) Add a query that illustrates the use of OR extensions
+-- f) Calculate the contribution percentage of each municipality’s balance (revenues - expenses) to the overall balance of its parent regions (NUT III, NUT II, NUT I, Country).
+WITH
+municipality_balance AS (
+    SELECT e.municipality AS location, (SUM(r.amount)-SUM(e.amount)) AS balance
+    FROM aexpenses e LEFT JOIN arevenues r ON e.municipality = r.municipality
+    WHERE e.heading.hlevel=2 AND r.heading.hlevel=2
+    GROUP BY e.municipality
+),
+nut_iii_balance AS (
+    SELECT e.municipality.get_nut_iii() AS location, (SUM(r.amount)-SUM(e.amount)) AS balance
+    FROM aexpenses e LEFT JOIN arevenues r ON e.municipality = r.municipality
+    WHERE e.heading.hlevel=2 AND r.heading.hlevel=2
+    GROUP BY e.municipality.get_nut_iii()
+),
+nut_ii_balance AS (
+    SELECT e.municipality.get_nut_ii() AS location, (SUM(r.amount)-SUM(e.amount)) AS balance
+    FROM aexpenses e LEFT JOIN arevenues r ON e.municipality = r.municipality
+    WHERE e.heading.hlevel=2 AND r.heading.hlevel=2
+    GROUP BY e.municipality.get_nut_ii()
+),
+nut_i_balance AS (
+    SELECT e.municipality.get_nut_i() AS location, (SUM(r.amount)-SUM(e.amount)) AS balance
+    FROM aexpenses e LEFT JOIN arevenues r ON e.municipality = r.municipality
+    WHERE e.heading.hlevel=2 AND r.heading.hlevel=2
+    GROUP BY e.municipality.get_nut_i()
+),
+country_balance AS (
+    SELECT e.municipality.get_country() AS location, (SUM(r.amount)-SUM(e.amount)) AS balance
+    FROM aexpenses e LEFT JOIN arevenues r ON e.municipality = r.municipality
+    WHERE e.heading.hlevel=2 AND r.heading.hlevel=2
+    GROUP BY e.municipality.get_country()
+),
+base_balance AS (
+    SELECT x.*, 
+        x.location.get_nut_iii() AS nut_iii,
+        x.location.get_nut_ii() AS nut_ii,
+        x.location.get_nut_i() AS nut_i,
+        x.location.get_country() AS country
+    FROM (
+        SELECT TREAT(DEREF(location) AS municipalities_t) AS location, balance
+        FROM municipality_balance
+        UNION ALL
+        SELECT TREAT(location AS municipalities_t) AS location, balance
+        FROM nut_iii_balance
+        UNION ALL
+        SELECT TREAT(location AS municipalities_t) AS location, balance
+        FROM nut_ii_balance
+        UNION ALL
+        SELECT TREAT(location AS municipalities_t) AS location, balance
+        FROM nut_i_balance
+        UNION ALL
+        SELECT TREAT(location AS municipalities_t) AS location, balance
+        FROM country_balance
+    ) x
+)   
+
+SELECT m.location.designation AS Location, 
+    ROUND((m.balance/ABS(iii.balance))*100,2) AS nut_iii_balance_percentage, 
+    ROUND((m.balance/ABS(ii.balance))*100,2) AS nut_ii_balance_percentage, 
+    ROUND((m.balance/ABS(i.balance))*100,2) AS nut_i_balance_percentage, 
+    ROUND((m.balance/ABS(c.balance))*100,2) AS country_balance_percentage
+FROM base_balance m,
+    nut_iii_balance iii,
+    nut_ii_balance ii,
+    nut_i_balance i,
+    country_balance c
+WHERE m.nut_iii=iii.location(+)
+    AND m.nut_ii=ii.location(+)
+    AND m.nut_i=i.location(+)
+    AND m.country=c.location(+)
+ORDER BY nut_iii_balance_percentage ASC, 
+    nut_ii_balance_percentage ASC, 
+    nut_i_balance_percentage ASC, 
+    country_balance_percentage ASC;
+
+
