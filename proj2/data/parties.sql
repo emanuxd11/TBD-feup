@@ -27,3 +27,49 @@ INSERT INTO parties
 
 INSERT INTO parties
     VALUES (parties_t('PAN', 'Pessoas-Animais-Natureza', 'Center'));
+
+INSERT INTO parties
+    VALUES (parties_t('JPP', 'Juntos pelo Povo', 'left'));
+
+INSERT INTO parties
+    VALUES (parties_t('Grupo de Cidadãos Eleitores', 'Grupo de Cidadãos Eleitores', NULL));
+    
+INSERT INTO parties
+    VALUES (parties_t('PSD-CDS', 'Partido Social Democrata', 'right'));
+
+INSERT INTO parties
+    VALUES (parties_t('NC', 'Nós, Cidadãos!', 'right'));
+
+INSERT INTO parties
+    VALUES (parties_t('PS-BE-JPP-PDR-NC', 'Partido Socialista', 'left'));
+
+INSERT INTO parties
+    VALUES (parties_t('PSD-MPT', 'Partido Social Democrata', 'right'));
+    
+INSERT INTO parties
+    VALUES (parties_t('PSD-CDS-PPM', 'Partido Social Democrata', 'right'));
+
+INSERT INTO parties
+    VALUES (parties_t('PSD-CDS-PPM-A', 'Partido Social Democrata', 'right'));
+
+INSERT INTO parties
+    VALUES (parties_t('PSD-CDS-NC-PPM-A-RIR-VP', 'Partido Social Democrata', 'right'));
+
+INSERT INTO parties
+    VALUES (parties_t('PSD-CDS-PPM-MPT', 'Partido Social Democrata', 'right'));
+
+INSERT INTO parties
+    VALUES (parties_t('PSD-CDS-MPT-PPM', 'Partido Social Democrata', 'right'));
+
+INSERT INTO parties
+    VALUES (parties_t('PSD-CDS-IL-MPT-PPM', 'Partido Social Democrata', 'right'));
+
+INSERT INTO parties
+    VALUES (parties_t('PSD-CDS-A-MPT-PPM', 'Partido Social Democrata', 'right'));
+
+INSERT INTO parties
+    VALUES (parties_t('PSD-CDS-MPT', 'Partido Social Democrata', 'right'));
+
+INSERT INTO parties
+    VALUES (parties_t('L-PS', 'Livre', 'left'));
+

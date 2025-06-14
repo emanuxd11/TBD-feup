@@ -1,8 +1,16 @@
 -- a) Calculate the expenses by period and heading of each region's municipalities. Order municipalities by decreasing population.
-SELECT m.designation, p.year, h.description, m.get_total_expenses(h, p) AS total_expenses
+SELECT m.designation, p.year, h.description, m.get_total_expenses(VALUE(h), VALUE(p)) AS total_expenses
 FROM municipalities m, periods p, headings h
 -- WHERE VALUE(m) IS OF (municipality_t)
 ORDER BY m.population DESC;
+
+SELECT x.municipality.designation, DEREF(x.heading).description, DEREF(x.period).year, x.total_expenses
+FROM (
+    SELECT e.municipality.get_nut_iii() AS municipality, e.heading, e.period, SUM(e.amount) AS total_expenses
+    FROM aexpenses e
+    GROUP BY e.municipality.get_nut_iii(), e.heading, e.period
+) x
+ORDER BY x.municipality.population DESC;
 
 -- b) Check whether the values of the higher-level headings are consistent with the corresponding lower values.
 SELECT DEREF(x1.heading).description, x1.soma AS lower_level_sum, x2.soma AS higher_level_value
