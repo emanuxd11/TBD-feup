@@ -7,35 +7,37 @@ FROM (
 ) x
 ORDER BY x.region.population DESC;
 
+
 -- b) Check whether the values of the higher-level headings are consistent with the corresponding lower values.
-SELECT DEREF(x1.heading).description, x1.soma AS lower_level_sum, x2.soma AS higher_level_value
-FROM
-    (SELECT DEREF(r.heading).parent AS heading, SUM(r.amount) AS soma
-    FROM arevenues r
-    WHERE DEREF(r.heading).hlevel = 2
-    GROUP BY DEREF(r.heading).parent
+SELECT DEREF(x1.heading).description AS heading, x1.soma AS lower_level_sum, x2.soma AS higher_level_value
+FROM ( 
+    SELECT DEREF(rev.heading).parent AS heading, SUM(rev.amount) AS soma
+    FROM xmunicipalities m, TABLE(m.revenues) rev
+    WHERE DEREF(rev.heading).hlevel = 2
+    GROUP BY DEREF(rev.heading).parent
     UNION ALL
-    SELECT DEREF(e.heading).parent AS heading, SUM(e.amount) AS soma
-    FROM aexpenses e
-    WHERE DEREF(e.heading).hlevel = 2
-    GROUP BY DEREF(e.heading).parent) x1
-    FULL OUTER JOIN
-    (SELECT r.heading AS heading, SUM(r.amount) AS soma
-    FROM arevenues r
-    WHERE DEREF(r.heading).hlevel = 1
-    GROUP BY r.heading
+    SELECT DEREF(exp.heading).parent AS heading, SUM(exp.amount) AS soma
+    FROM xmunicipalities m, TABLE(m.expenses) exp
+    WHERE DEREF(exp.heading).hlevel = 2
+    GROUP BY DEREF(exp.heading).parent) x1
+FULL OUTER JOIN (
+    SELECT rev.heading AS heading, SUM(rev.amount) AS soma
+    FROM xmunicipalities m, TABLE(m.revenues) rev
+    WHERE DEREF(rev.heading).hlevel = 1
+    GROUP BY rev.heading
     UNION ALL
-    SELECT e.heading AS heading, SUM(e.amount) AS soma
-    FROM aexpenses e
-    WHERE DEREF(e.heading).hlevel = 1
-    GROUP BY e.heading) x2 ON x1.heading = x2.heading;
+    SELECT exp.heading AS heading, SUM(exp.amount) AS soma
+    FROM xmunicipalities m, TABLE(m.expenses) exp
+    WHERE DEREF(exp.heading).hlevel = 1
+    GROUP BY exp.heading
+) x2 ON x1.heading=x2.heading;
 
 
 -- c) What is the average expense by a thousand inhabitants on each heading for each party?
-SELECT x.party.acronym, x.heading.description, x.avg_expense_per_thousand
+SELECT x.party.acronym AS party, x.heading.description, x.avg_expense_per_thousand
 FROM (
-    SELECT l.party, e.heading, AVG((e.amount / l.municipality.population) * 1000) AS avg_expense_per_thousand
-    FROM aexpenses e INNER JOIN leaderships l ON e.municipality=l.municipality
+    SELECT l.party, e.heading, AVG((e.amount / m.population) * 1000) AS avg_expense_per_thousand
+    FROM xmunicipalities m, TABLE(m.expenses) e, TABLE(m.leaderships) l
     GROUP BY l.party, e.heading
 ) x;
 
@@ -43,8 +45,8 @@ FROM (
 
 SELECT x.party_coalition, x.heading.description, x.avg_expense_per_thousand
 FROM (
-    SELECT l.party.partyName AS party_coalition, e.heading, AVG((e.amount / l.municipality.population) * 1000) AS avg_expense_per_thousand
-    FROM aexpenses e INNER JOIN leaderships l ON e.municipality=l.municipality
+    SELECT l.party.partyName AS party_coalition, e.heading, AVG((e.amount / m.population) * 1000) AS avg_expense_per_thousand
+    FROM xmunicipalities m, TABLE(m.expenses) e, TABLE(m.leaderships) l
     GROUP BY l.party.partyName, e.heading
 ) x;
 
@@ -52,14 +54,13 @@ FROM (
 -- d) Which party has more investment per square km each year?
 SELECT x.party.acronym AS party, x.period.year AS year, x.investment_per_km2
 FROM (
-    SELECT l.party, e.period, SUM(e.amount/e.municipality.area) AS investment_per_km2
-    FROM aexpenses e INNER JOIN leaderships l ON e.municipality = l.municipality
+    SELECT l.party, e.period, SUM(e.amount/m.area) AS investment_per_km2
+    FROM xmunicipalities m, TABLE(m.expenses) e, TABLE(m.leaderships) l
     WHERE e.heading.description = 'Capital Investments'
     GROUP BY l.party, e.period
-    HAVING SUM(e.amount / e.municipality.area) = (
-        SELECT MAX(SUM(e2.amount / e2.municipality.area))
-        FROM aexpenses e2
-        INNER JOIN leaderships l2 ON e2.municipality = l2.municipality
+    HAVING SUM(e.amount / m.area) = (
+        SELECT MAX(SUM(e2.amount / m2.area))
+        FROM xmunicipalities m2, TABLE(m2.expenses) e2, TABLE(m2.leaderships) l2
         WHERE DEREF(e2.heading).description = 'Capital Investments'
             AND e2.period = e.period
         GROUP BY l2.party
@@ -71,14 +72,13 @@ ORDER BY x.period.year ASC;
 
 SELECT x.party_coalition, x.period.year AS year, x.investment_per_km2
 FROM (
-    SELECT l.party.partyName AS party_coalition, e.period, SUM(e.amount/e.municipality.area) AS investment_per_km2
-    FROM aexpenses e INNER JOIN leaderships l ON e.municipality = l.municipality
+    SELECT l.party.partyName AS party_coalition, e.period, SUM(e.amount/m.area) AS investment_per_km2
+    FROM xmunicipalities m, TABLE(m.expenses) e, TABLE(m.leaderships) l
     WHERE e.heading.description = 'Capital Investments'
     GROUP BY l.party.partyName, e.period
-    HAVING SUM(e.amount / e.municipality.area) = (
-        SELECT MAX(SUM(e2.amount / e2.municipality.area))
-        FROM aexpenses e2
-        INNER JOIN leaderships l2 ON e2.municipality = l2.municipality
+    HAVING SUM(e.amount / m.area) = (
+        SELECT MAX(SUM(e2.amount / m2.area))
+        FROM xmunicipalities m2, TABLE(m2.expenses) e2, TABLE(m2.leaderships) l2
         WHERE DEREF(e2.heading).description = 'Capital Investments'
             AND e2.period = e.period
         GROUP BY l2.party.partyName
@@ -90,14 +90,13 @@ ORDER BY x.period.year ASC;
 -- e) Which party has more salaries per thousand inhabitants each year?
 SELECT x.party.acronym AS party, x.period.year AS year, x.salaries_per_thousand
 FROM (
-    SELECT l.party, e.period, SUM((e.amount/e.municipality.population) * 1000) AS salaries_per_thousand
-    FROM aexpenses e INNER JOIN leaderships l ON e.municipality = l.municipality
+    SELECT l.party, e.period, SUM((e.amount/m.population) * 1000) AS salaries_per_thousand
+    FROM xmunicipalities m, TABLE(m.expenses) e, TABLE(m.leaderships) l
     WHERE e.heading.description = 'Salaries'
     GROUP BY l.party, e.period
-    HAVING SUM((e.amount / e.municipality.population) * 1000) = (
-        SELECT MAX(SUM((e2.amount / e2.municipality.population) * 1000))
-        FROM aexpenses e2
-        INNER JOIN leaderships l2 ON e2.municipality = l2.municipality
+    HAVING SUM((e.amount / m.population) * 1000) = (
+        SELECT MAX(SUM((e2.amount / m2.population) * 1000))
+        FROM xmunicipalities m2, TABLE(m2.expenses) e2, TABLE(m2.leaderships) l2
         WHERE DEREF(e2.heading).description = 'Salaries'
             AND e2.period = e.period
         GROUP BY l2.party
@@ -109,14 +108,13 @@ ORDER BY x.period.year ASC;
 
 SELECT x.party_coalition, x.period.year AS year, x.salaries_per_thousand
 FROM (
-    SELECT l.party.partyName AS party_coalition, e.period, SUM((e.amount/e.municipality.population) * 1000) AS salaries_per_thousand
-    FROM aexpenses e INNER JOIN leaderships l ON e.municipality = l.municipality
+    SELECT l.party.partyName AS party_coalition, e.period, SUM((e.amount/m.population) * 1000) AS salaries_per_thousand
+    FROM xmunicipalities m, TABLE(m.expenses) e, TABLE(m.leaderships) l
     WHERE e.heading.description = 'Salaries'
     GROUP BY l.party.partyName, e.period
-    HAVING SUM((e.amount / e.municipality.population) * 1000) = (
-        SELECT MAX(SUM((e2.amount / e2.municipality.population) * 1000))
-        FROM aexpenses e2
-        INNER JOIN leaderships l2 ON e2.municipality = l2.municipality
+    HAVING SUM((e.amount / m.population) * 1000) = (
+        SELECT MAX(SUM((e2.amount / m2.population) * 1000))
+        FROM xmunicipalities m2, TABLE(m2.expenses) e2, TABLE(m2.leaderships) l2
         WHERE DEREF(e2.heading).description = 'Salaries'
             AND e2.period = e.period
         GROUP BY l2.party.partyName
@@ -127,73 +125,71 @@ ORDER BY x.period.year ASC;
 
 -- f) Add a query that illustrates the use of OR extensions
 -- f) Calculate the contribution percentage of each municipality’s balance (revenues - expenses) to the overall balance of its parent regions (NUT III, NUT II, NUT I, Country).
--- f) Add a query that illustrates the use of OR extensions
--- f) Calculate the contribution percentage of each municipality’s balance (revenues - expenses) to the overall balance of its parent regions (NUT III, NUT II, NUT I, Country).
 WITH
 municipality_balance AS (
     SELECT e.location AS location, (r.revenues-e.expenses) AS balance
     FROM (
-        SELECT r.municipality AS location, SUM(r.amount) AS revenues
-        FROM arevenues r
+        SELECT VALUE(m) AS location, SUM(r.amount) AS revenues
+        FROM xmunicipalities m, TABLE(m.revenues) r
         WHERE r.heading.hlevel=2
-        GROUP BY r.municipality) r
+        GROUP BY VALUE(m)) r
     INNER JOIN (
-        SELECT e.municipality AS location, SUM(e.amount) AS expenses
-        FROM aexpenses e
+        SELECT VALUE(m) AS location, SUM(e.amount) AS expenses
+        FROM xmunicipalities m, TABLE(m.expenses) e
         WHERE e.heading.hlevel=2
-        GROUP BY e.municipality) e ON r.location=e.location
+        GROUP BY VALUE(m)) e ON r.location=e.location
 ),
 nut_iii_balance AS (
     SELECT e.location AS location, (r.revenues-e.expenses) AS balance
     FROM (
-        SELECT r.municipality.get_nut_iii() AS location, SUM(r.amount) AS revenues
-        FROM arevenues r
+        SELECT m.get_nut_iii() AS location, SUM(r.amount) AS revenues
+        FROM xmunicipalities m, TABLE(m.revenues) r
         WHERE r.heading.hlevel=2
-        GROUP BY r.municipality.get_nut_iii()) r
+        GROUP BY m.get_nut_iii()) r
     INNER JOIN (
-        SELECT e.municipality.get_nut_iii() AS location, SUM(e.amount) AS expenses
-        FROM aexpenses e
+        SELECT m.get_nut_iii() AS location, SUM(e.amount) AS expenses
+        FROM xmunicipalities m, TABLE(m.expenses) e
         WHERE e.heading.hlevel=2
-        GROUP BY e.municipality.get_nut_iii()) e ON r.location=e.location
+        GROUP BY m.get_nut_iii()) e ON r.location=e.location
 ),
 nut_ii_balance AS (
     SELECT e.location AS location, (r.revenues-e.expenses) AS balance
     FROM (
-        SELECT r.municipality.get_nut_ii() AS location, SUM(r.amount) AS revenues
-        FROM arevenues r
+        SELECT m.get_nut_ii() AS location, SUM(r.amount) AS revenues
+        FROM xmunicipalities m, TABLE(m.revenues) r
         WHERE r.heading.hlevel=2
-        GROUP BY r.municipality.get_nut_ii()) r
+        GROUP BY m.get_nut_ii()) r
     INNER JOIN (
-        SELECT e.municipality.get_nut_ii() AS location, SUM(e.amount) AS expenses
-        FROM aexpenses e
+        SELECT m.get_nut_ii() AS location, SUM(e.amount) AS expenses
+        FROM xmunicipalities m, TABLE(m.expenses) e
         WHERE e.heading.hlevel=2
-        GROUP BY e.municipality.get_nut_ii()) e ON r.location=e.location
+        GROUP BY m.get_nut_ii()) e ON r.location=e.location
 ),
 nut_i_balance AS (
     SELECT e.location AS location, (r.revenues-e.expenses) AS balance
     FROM (
-        SELECT r.municipality.get_nut_i() AS location, SUM(r.amount) AS revenues
-        FROM arevenues r
+        SELECT m.get_nut_i() AS location, SUM(r.amount) AS revenues
+        FROM xmunicipalities m, TABLE(m.revenues) r
         WHERE r.heading.hlevel=2
-        GROUP BY r.municipality.get_nut_i()) r
+        GROUP BY m.get_nut_i()) r
     INNER JOIN (
-        SELECT e.municipality.get_nut_i() AS location, SUM(e.amount) AS expenses
-        FROM aexpenses e
+        SELECT m.get_nut_i() AS location, SUM(e.amount) AS expenses
+        FROM xmunicipalities m, TABLE(m.expenses) e
         WHERE e.heading.hlevel=2
-        GROUP BY e.municipality.get_nut_i()) e ON r.location=e.location
+        GROUP BY m.get_nut_i()) e ON r.location=e.location
 ),
 country_balance AS (
     SELECT e.location AS location, (r.revenues-e.expenses) AS balance
     FROM (
-        SELECT r.municipality.get_country() AS location, SUM(r.amount) AS revenues
-        FROM arevenues r
+        SELECT m.get_country() AS location, SUM(r.amount) AS revenues
+        FROM xmunicipalities m, TABLE(m.revenues) r
         WHERE r.heading.hlevel=2
-        GROUP BY r.municipality.get_country()) r
+        GROUP BY m.get_country()) r
     INNER JOIN (
-        SELECT e.municipality.get_country() AS location, SUM(e.amount) AS expenses
-        FROM aexpenses e
+        SELECT m.get_country() AS location, SUM(e.amount) AS expenses
+        FROM xmunicipalities m, TABLE(m.expenses) e
         WHERE e.heading.hlevel=2
-        GROUP BY e.municipality.get_country()) e ON r.location=e.location
+        GROUP BY m.get_country()) e ON r.location=e.location
 ),
 base_balance AS (
     SELECT x.*, 
@@ -202,19 +198,19 @@ base_balance AS (
         x.location.get_nut_i() AS nut_i,
         x.location.get_country() AS country
     FROM (
-        SELECT TREAT(DEREF(location) AS municipalities_t) AS location, balance
+        SELECT TREAT(location AS xmunicipalities_t) AS location, balance
         FROM municipality_balance
         UNION ALL
-        SELECT TREAT(location AS municipalities_t) AS location, balance
+        SELECT TREAT(location AS xmunicipalities_t) AS location, balance
         FROM nut_iii_balance
         UNION ALL
-        SELECT TREAT(location AS municipalities_t) AS location, balance
+        SELECT TREAT(location AS xmunicipalities_t) AS location, balance
         FROM nut_ii_balance
         UNION ALL
-        SELECT TREAT(location AS municipalities_t) AS location, balance
+        SELECT TREAT(location AS xmunicipalities_t) AS location, balance
         FROM nut_i_balance
         UNION ALL
-        SELECT TREAT(location AS municipalities_t) AS location, balance
+        SELECT TREAT(location AS xmunicipalities_t) AS location, balance
         FROM country_balance
     ) x
 )   
