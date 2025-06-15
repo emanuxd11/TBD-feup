@@ -128,36 +128,73 @@ ORDER BY x.period.year ASC;
 
 -- f) Add a query that illustrates the use of OR extensions
 -- f) Calculate the contribution percentage of each municipality’s balance (revenues - expenses) to the overall balance of its parent regions (NUT III, NUT II, NUT I, Country).
+-- f) Add a query that illustrates the use of OR extensions
+-- f) Calculate the contribution percentage of each municipality’s balance (revenues - expenses) to the overall balance of its parent regions (NUT III, NUT II, NUT I, Country).
 WITH
 municipality_balance AS (
-    SELECT e.municipality AS location, (SUM(r.amount)-SUM(e.amount)) AS balance
-    FROM aexpenses e LEFT JOIN arevenues r ON e.municipality = r.municipality
-    WHERE e.heading.hlevel=2 AND r.heading.hlevel=2
-    GROUP BY e.municipality
+    SELECT e.location AS location, (r.revenues-e.expenses) AS balance
+    FROM (
+        SELECT r.municipality AS location, SUM(r.amount) AS revenues
+        FROM arevenues r
+        WHERE r.heading.hlevel=2
+        GROUP BY r.municipality) r
+    INNER JOIN (
+        SELECT e.municipality AS location, SUM(e.amount) AS expenses
+        FROM aexpenses e
+        WHERE e.heading.hlevel=2
+        GROUP BY e.municipality) e ON r.location=e.location
 ),
 nut_iii_balance AS (
-    SELECT e.municipality.get_nut_iii() AS location, (SUM(r.amount)-SUM(e.amount)) AS balance
-    FROM aexpenses e LEFT JOIN arevenues r ON e.municipality = r.municipality
-    WHERE e.heading.hlevel=2 AND r.heading.hlevel=2
-    GROUP BY e.municipality.get_nut_iii()
+    SELECT e.location AS location, (r.revenues-e.expenses) AS balance
+    FROM (
+        SELECT r.municipality.get_nut_iii() AS location, SUM(r.amount) AS revenues
+        FROM arevenues r
+        WHERE r.heading.hlevel=2
+        GROUP BY r.municipality.get_nut_iii()) r
+    INNER JOIN (
+        SELECT e.municipality.get_nut_iii() AS location, SUM(e.amount) AS expenses
+        FROM aexpenses e
+        WHERE e.heading.hlevel=2
+        GROUP BY e.municipality.get_nut_iii()) e ON r.location=e.location
 ),
 nut_ii_balance AS (
-    SELECT e.municipality.get_nut_ii() AS location, (SUM(r.amount)-SUM(e.amount)) AS balance
-    FROM aexpenses e LEFT JOIN arevenues r ON e.municipality = r.municipality
-    WHERE e.heading.hlevel=2 AND r.heading.hlevel=2
-    GROUP BY e.municipality.get_nut_ii()
+    SELECT e.location AS location, (r.revenues-e.expenses) AS balance
+    FROM (
+        SELECT r.municipality.get_nut_ii() AS location, SUM(r.amount) AS revenues
+        FROM arevenues r
+        WHERE r.heading.hlevel=2
+        GROUP BY r.municipality.get_nut_ii()) r
+    INNER JOIN (
+        SELECT e.municipality.get_nut_ii() AS location, SUM(e.amount) AS expenses
+        FROM aexpenses e
+        WHERE e.heading.hlevel=2
+        GROUP BY e.municipality.get_nut_ii()) e ON r.location=e.location
 ),
 nut_i_balance AS (
-    SELECT e.municipality.get_nut_i() AS location, (SUM(r.amount)-SUM(e.amount)) AS balance
-    FROM aexpenses e LEFT JOIN arevenues r ON e.municipality = r.municipality
-    WHERE e.heading.hlevel=2 AND r.heading.hlevel=2
-    GROUP BY e.municipality.get_nut_i()
+    SELECT e.location AS location, (r.revenues-e.expenses) AS balance
+    FROM (
+        SELECT r.municipality.get_nut_i() AS location, SUM(r.amount) AS revenues
+        FROM arevenues r
+        WHERE r.heading.hlevel=2
+        GROUP BY r.municipality.get_nut_i()) r
+    INNER JOIN (
+        SELECT e.municipality.get_nut_i() AS location, SUM(e.amount) AS expenses
+        FROM aexpenses e
+        WHERE e.heading.hlevel=2
+        GROUP BY e.municipality.get_nut_i()) e ON r.location=e.location
 ),
 country_balance AS (
-    SELECT e.municipality.get_country() AS location, (SUM(r.amount)-SUM(e.amount)) AS balance
-    FROM aexpenses e LEFT JOIN arevenues r ON e.municipality = r.municipality
-    WHERE e.heading.hlevel=2 AND r.heading.hlevel=2
-    GROUP BY e.municipality.get_country()
+    SELECT e.location AS location, (r.revenues-e.expenses) AS balance
+    FROM (
+        SELECT r.municipality.get_country() AS location, SUM(r.amount) AS revenues
+        FROM arevenues r
+        WHERE r.heading.hlevel=2
+        GROUP BY r.municipality.get_country()) r
+    INNER JOIN (
+        SELECT e.municipality.get_country() AS location, SUM(e.amount) AS expenses
+        FROM aexpenses e
+        WHERE e.heading.hlevel=2
+        GROUP BY e.municipality.get_country()) e ON r.location=e.location
 ),
 base_balance AS (
     SELECT x.*, 

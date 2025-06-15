@@ -40,6 +40,27 @@ headings = [
     (25, 'Fines and Penalties', 'R', 50000, [0.5, 0.2, 0.3], 17),
     (26, 'Asset Sales', 'R', 250000, [0.4, 0.4, 0.2], 17),
 ]
+headings = [
+    # Expenses (headingId, name, type, base_value, [pop_weight, area_weight, density_weight], parent)
+    (6, 'Salaries', 'E', 800000, [0.7, 0.1, 0.2], 1),  # Reduced from 1,000,000
+    (7, 'Office and Operational Costs', 'E', 400000, [0.6, 0.2, 0.2], 1),  # Reduced from 500,000
+    (8, 'Capital Investments', 'E', 2000000, [0.5, 0.3, 0.2], 2),
+    (9, 'Maintenance', 'E', 600000, [0.3, 0.5, 0.2], 2),  # Reduced from 750,000
+    (10, 'School Operations', 'E', 700000, [0.8, 0.1, 0.1], 3),  # Reduced from 800,000
+    (11, 'Cultural Events', 'E', 250000, [0.6, 0.2, 0.2], 3),  # Reduced from 300,000
+    (12, 'Social Assistance Programs', 'E', 500000, [0.7, 0.1, 0.2], 4),  # Reduced from 600,000
+    (13, 'Waste Collection and Treatment', 'E', 700000, [0.3, 0.5, 0.2], 5),  # Reduced from 900,000
+    # Revenues
+    (18, 'IMI - Property Tax', 'R', 700000, [0.5, 0.3, 0.2], 14),  # Increased from 500,000
+    (19, 'IMT - Property Transfer Tax', 'R', 350000, [0.5, 0.2, 0.3], 14),  # Increased from 200,000
+    (20, 'IUC - Vehicle Tax', 'R', 250000, [0.6, 0.1, 0.3], 14),  # Increased from 150,000
+    (21, 'State Grants', 'R', 1800000, [0.7, 0.2, 0.1], 15),  # Increased from 1,500,000
+    (22, 'EU Funds', 'R', 1700000, [0.5, 0.3, 0.2], 15),  # Increased from 1,000,000
+    (23, 'Licensing Fees', 'R', 200000, [0.4, 0.2, 0.4], 16),  # Increased from 100,000
+    (24, 'Utility Service Charges', 'R', 600000, [0.5, 0.3, 0.2], 16),  # Increased from 400,000
+    (25, 'Fines and Penalties', 'R', 75000, [0.5, 0.2, 0.3], 17),  # Increased from 50,000
+    (26, 'Asset Sales', 'R', 500000, [0.4, 0.4, 0.2], 17),  # Increased from 250,000
+]
 num_periods=4
 
 # Generate SQL INSERT statements
